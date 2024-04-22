@@ -1,34 +1,47 @@
 ﻿using System.Reflection;
 using System.Reflection.Emit;
 using HarmonyLib;
+using ItsStardewTime.Framework;
 using StardewModdingAPI;
+using StardewValley.Locations;
 
 namespace ItsStardewTime.Patches
 {
     internal class SkullCavernJumpPatches
     {
-#nullable disable
-        private static IMonitor Monitor;
-#nullable enable
-
-        internal static void Initialize(IMonitor monitor)
+        internal static void Initialize(Harmony harmony)
         {
-            Monitor = monitor;
+            harmony.Patch
+            (
+                original: AccessTools.Method(typeof(MineShaft), nameof(MineShaft.enterMineShaft)),
+                transpiler: new HarmonyMethod
+                    (typeof(SkullCavernJumpPatches), nameof(SkullCavernJumpPatches.EnterMineShaft_Transpile))
+            );
         }
 
         internal static IEnumerable<CodeInstruction> EnterMineShaft_Transpile(IEnumerable<CodeInstruction> instructions)
         {
+            IEnumerable<CodeInstruction> enter_mine_shaft_transpile = instructions.ToList();
             try
             {
-                var instList = instructions.ToList();
+                var inst_list = enter_mine_shaft_transpile.ToList();
                 bool patched = false;
-                MethodInfo mathMaxMethod = AccessTools.Method(typeof(Math), nameof(Math.Max), new[] { typeof(int), typeof(int) });
-                MethodInfo patchedMathMaxMethod = AccessTools.Method(typeof(SkullCavernJumpPatches), nameof(SkullCavernJumpPatches.Max));
-                for (int i = 6; i < instList.Count - 6; ++i)
+                MethodInfo math_max_method = AccessTools.Method
+                (
+                    typeof(Math),
+                    nameof(Math.Max),
+                    new[] { typeof(int), typeof(int) }
+                );
+                MethodInfo patched_math_max_method = AccessTools.Method
+                (
+                    typeof(SkullCavernJumpPatches),
+                    nameof(Max)
+                );
+                for (int i = 6; i < inst_list.Count - 6; ++i)
                 {
-                    if (instList[i].Calls(mathMaxMethod))
+                    if (inst_list[i].Calls(math_max_method))
                     {
-                        instList[i] = new CodeInstruction(OpCodes.Call, patchedMathMaxMethod);
+                        inst_list[i] = new CodeInstruction(OpCodes.Call, patched_math_max_method);
 
                         patched = true;
                         break;
@@ -37,15 +50,15 @@ namespace ItsStardewTime.Patches
 
                 if (!patched)
                 {
-                    Monitor.Log($"Failed to patch MineShaft.", LogLevel.Debug);
+                    TimeController.Monitor.Log($"Failed to patch MineShaft.", LogLevel.Debug);
                 }
 
-                return instList;
+                return inst_list;
             }
             catch (Exception ex)
             {
-                Monitor.Log($"Failed to apply patch:\n{ex}", LogLevel.Error);
-                return instructions;
+                TimeController.Monitor.Log($"Failed to apply patch:\n{ex}", LogLevel.Error);
+                return enter_mine_shaft_transpile;
             }
         }
 

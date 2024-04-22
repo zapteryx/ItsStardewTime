@@ -52,20 +52,20 @@ namespace ItsStardewTime.Framework
         public double GetSecondsPerMinute(GameLocation location)
         {
             const double vanillaSecondsPerMinute = 0.7;
-            const double vanillaSecondsPerMinute_skull = 0.9;
+            const double vanillaSecondsPerMinuteSkull = 0.9;
 
             if (location == null)
                 return Outdoors ?? vanillaSecondsPerMinute;
 
             // by location name
-            if (ByLocationName.TryGetValue(location.Name, out double tickLength))
-                return tickLength;
+            if (ByLocationName.TryGetValue(location.Name, out double tick_length))
+                return tick_length;
 
             // by location name (Deep Woods mod)
             if (DeepWoods.HasValue && location.Name.StartsWith("DeepWoods"))
             {
-                if (ByLocationName.TryGetValue("DeepWoods", out tickLength))
-                    return tickLength;
+                if (ByLocationName.TryGetValue("DeepWoods", out tick_length))
+                    return tick_length;
 
                 return DeepWoods.Value;
             }
@@ -93,7 +93,7 @@ namespace ItsStardewTime.Framework
                 }
                 else
                 {
-                    return SkullCavern ?? vanillaSecondsPerMinute_skull;
+                    return SkullCavern ?? vanillaSecondsPerMinuteSkull;
                 }
             }
 

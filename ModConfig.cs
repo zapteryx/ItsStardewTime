@@ -98,8 +98,8 @@ namespace ItsStardewTime
         /// <param name="dayOfMonth">The day of month to check.</param>
         public bool ShouldScale(string season, int dayOfMonth)
         {
-            Season seasonNumber = (Season)Utility.getSeasonNumber(season);
-            return EnableOnFestivalDays || !Utility.isFestivalDay(dayOfMonth, seasonNumber);
+            Season season_number = (Season)Utility.getSeasonNumber(season);
+            return EnableOnFestivalDays || !Utility.isFestivalDay(dayOfMonth, season_number);
         }
 
         /// <summary>Get the number of milliseconds per 10 minutes to apply for a location.</summary>

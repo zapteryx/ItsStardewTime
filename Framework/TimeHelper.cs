@@ -10,7 +10,7 @@ namespace ItsStardewTime.Framework
         ** Fields
         *********/
         /// <summary>The previous tick progress.</summary>
-        private double PreviousProgress;
+        private double _previousProgress;
 
         /// <summary>The handlers to notify when the tick progress changes.</summary>
         private event EventHandler<TickProgressChangedEventArgs>? Handlers;
@@ -68,15 +68,15 @@ namespace ItsStardewTime.Framework
                 _tickProgressBackingStore = 0;
             }
 
-            double previousProgress = PreviousProgress;
-            double tickProgress = TickProgress;
+            double previous_progress = _previousProgress;
+            double tick_progress = TickProgress;
 
-            if (previousProgress != tickProgress)
+            if (previous_progress != tick_progress)
             {
-                Handlers?.Invoke(null, new TickProgressChangedEventArgs(previousProgress, tickProgress));
+                Handlers?.Invoke(null, new TickProgressChangedEventArgs(previous_progress, tick_progress));
             }
 
-            PreviousProgress = TickProgress;
+            _previousProgress = TickProgress;
             _tickProgressBackingStore += Game1.currentGameTime.ElapsedGameTime.Milliseconds;
             _lastGameTimeInterval = Game1.gameTimeInterval;
         }
@@ -91,7 +91,7 @@ namespace ItsStardewTime.Framework
         public void SetTime(double tickProgress)
         {
             TickProgress = tickProgress;
-            PreviousProgress = tickProgress;
+            _previousProgress = tickProgress;
         }
     }
 }

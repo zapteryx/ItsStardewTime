@@ -8,21 +8,29 @@ namespace ItsStardewTime.Framework
     {
         /// <summary>Provides helper methods for tracking time flow.</summary>
         internal readonly TimeHelper TimeHelper = new(useGameTimeInterval: true);
-        private readonly TimeHelper ObjectTimeHelper = new(useGameTimeInterval: false);
 
-        private readonly IMonitor Monitor;
-        private readonly int OwningScreenID;
+        private readonly TimeHelper _objectTimeHelper = new(useGameTimeInterval: false);
+
+        private readonly IMonitor _monitor;
+        private readonly int _owningScreenId;
 
         /// <summary>Whether the player has manually frozen (<c>true</c>) or resumed (<c>false</c>) time.</summary>
-        private bool? ManualFreeze;
+        private bool? _manualFreeze;
 
-        /// <summary>The reason time would be frozen automatically if applicable, regardless of <see cref="ManualFreeze"/>.</summary>
+        public bool ManualFreeze
+        {
+            get => _manualFreeze ?? false;
+        }
+
+        /// <summary>The reason time would be frozen automatically if applicable, regardless of <see cref="_manualFreeze"/>.</summary>
         public AutoFreezeReason AutoFreeze { get; private set; } = AutoFreezeReason.None;
 
-        /// <summary>Whether time should be frozen.</summary>
-        internal bool IsTimeFrozen =>
-            ManualFreeze == true
-            || AutoFreeze != AutoFreezeReason.None && ManualFreeze != false;
+        /// <summary>
+        /// Whether time should be frozen.
+        /// Freeze time when ManualFreeze is <c>true</c> or AutoFreeze is not <see cref="AutoFreezeReason.None"/>.
+        /// I.e. when a manual freeze is requested or when the game is paused due to automatically detected conditions.
+        /// </summary>
+        internal bool IsTimeFrozen => ManualFreeze || AutoFreeze != AutoFreezeReason.None;
 
         /// <summary>Backing field for <see cref="TickInterval"/>.</summary>
         private int _tickInterval = Game1.realMilliSecondsPerGameTenMinutes;
@@ -40,11 +48,11 @@ namespace ItsStardewTime.Framework
         /// <inheritdoc />
         public TimeSpeed(IModHelper helper, IMonitor monitor)
         {
-            Monitor = monitor;
-            OwningScreenID = Context.ScreenId;
+            _monitor = monitor;
+            _owningScreenId = Context.ScreenId;
 
             TimeHelper.WhenTickProgressChanged(OnTickProgressed);
-            ObjectTimeHelper.WhenTickProgressChanged(OnObjectTickProgressed);
+            _objectTimeHelper.WhenTickProgressChanged(OnObjectTickProgressed);
             helper.Events.GameLoop.UpdateTicked += OnUpdateTicked;
         }
 
@@ -57,7 +65,7 @@ namespace ItsStardewTime.Framework
                 return;
 
             TimeHelper.Update();
-            ObjectTimeHelper.Update();
+            _objectTimeHelper.Update();
         }
 
         /// <summary>Raised after the <see cref="TimeHelper.TickProgress"/> value changes.</summary>
@@ -68,33 +76,39 @@ namespace ItsStardewTime.Framework
             if (IsTimeFrozen)
             {
                 TimeHelper.TickProgress = e.TimeChanged ? 0 : e.PreviousProgress;
+                return;
+            }
+
+            if (e.TimeChanged)
+            {
+                TimeHelper.TickProgress = ScaleTickProgress(TimeHelper.TickProgress, TickInterval);
             }
             else
             {
-                if (e.TimeChanged)
-                    TimeHelper.TickProgress = ScaleTickProgress(TimeHelper.TickProgress, TickInterval);
-                else
-                    TimeHelper.TickProgress = e.PreviousProgress + ScaleTickProgress(e.NewProgress - e.PreviousProgress, TickInterval);
+                TimeHelper.TickProgress =
+                    e.PreviousProgress +
+                    ScaleTickProgress(e.NewProgress - e.PreviousProgress, TickInterval);
             }
         }
 
         private void OnObjectTickProgressed(object? sender, TickProgressChangedEventArgs e)
         {
-            if (IsTimeFrozen)
+            if (!IsTimeFrozen)
             {
-                if (e.TimeChanged)
-                {
-                    ObjectTimeHelper.TickProgress = ScaleTickProgress(ObjectTimeHelper.TickProgress, TickInterval);
-                    FrozenTick?.Invoke(this, EventArgs.Empty);
-                }
-                else
-                {
-                    ObjectTimeHelper.TickProgress = e.PreviousProgress + ScaleTickProgress(e.NewProgress - e.PreviousProgress, TickInterval);
-                }
+                _objectTimeHelper.TickProgress = 0;
+                return;
+            }
+
+            if (e.TimeChanged)
+            {
+                _objectTimeHelper.TickProgress = ScaleTickProgress(_objectTimeHelper.TickProgress, TickInterval);
+                FrozenTick?.Invoke(this, EventArgs.Empty);
             }
             else
             {
-                ObjectTimeHelper.TickProgress = 0;
+                _objectTimeHelper.TickProgress =
+                    e.PreviousProgress +
+                    ScaleTickProgress(e.NewProgress - e.PreviousProgress, TickInterval);
             }
         }
 
@@ -110,26 +124,18 @@ namespace ItsStardewTime.Framework
         /// <param name="forInput">Whether to check for input handling.</param>
         private bool ShouldEnable()
         {
-            if (!CurrentPlayerOwnsInstance())
-            {
-                return false;
-            }
+            if (!CurrentPlayerOwnsInstance()) return false;
 
-            if (!Context.IsWorldReady)
-            {
-                return false;
-            }
-
-            return true;
+            return Context.IsWorldReady;
         }
 
         private bool CurrentPlayerOwnsInstance()
         {
-            return OwningScreenID == Context.ScreenId;
+            return _owningScreenId == Context.ScreenId;
         }
 
         /// <summary>
-        /// Update the <see cref="TickInterval"/> and <see cref="AutoFreeze"/> and <see cref="ManualFreeze"/> values.
+        /// Update the <see cref="TickInterval"/> and <see cref="AutoFreeze"/> and <see cref="_manualFreeze"/> values.
         /// </summary>
         /// <param name="tickInterval"></param>
         /// <param name="autoFreeze"></param>
@@ -137,18 +143,20 @@ namespace ItsStardewTime.Framework
         /// <param name="clearPreviousOverrides">Whether to clear any previous explicit overrides.</param>
         /// <param name="notifyOfUpdates"></param>
         /// <param name="notifyOfMultiplayerUpdates"></param>
-        internal void UpdateTimeSpeed(
+        internal void UpdateTimeSpeed
+        (
             int? tickInterval = null,
             AutoFreezeReason? autoFreeze = null,
             bool? manualOverride = null,
             bool clearPreviousOverrides = false,
             bool notifyOfUpdates = false,
-            bool notifyOfMultiplayerUpdates = false)
+            bool notifyOfMultiplayerUpdates = false
+        )
         {
-            bool? wasManualFreeze = ManualFreeze;
-            AutoFreezeReason wasAutoFreeze = AutoFreeze;
-            bool wasFrozen = IsTimeFrozen;
-            int priorTickInterval = TickInterval;
+            bool? was_manual_freeze = _manualFreeze;
+            AutoFreezeReason was_auto_freeze = AutoFreeze;
+            bool was_frozen = IsTimeFrozen;
+            int prior_tick_interval = TickInterval;
 
             if (autoFreeze != null)
             {
@@ -162,40 +170,46 @@ namespace ItsStardewTime.Framework
 
             // update manual freeze
             if (manualOverride.HasValue)
-                ManualFreeze = manualOverride.Value;
+                _manualFreeze = manualOverride.Value;
             else if (clearPreviousOverrides)
-                ManualFreeze = null;
+                _manualFreeze = null;
 
             // clear manual unfreeze if it's no longer needed
-            if (ManualFreeze == false && AutoFreeze == AutoFreezeReason.None)
-                ManualFreeze = null;
+            if (_manualFreeze == false && AutoFreeze == AutoFreezeReason.None)
+                _manualFreeze = null;
 
-            if (wasAutoFreeze != AutoFreeze)
-                Monitor.Log($"Auto freeze changed from {wasAutoFreeze} to {AutoFreeze}.");
-            if (wasManualFreeze != ManualFreeze)
-                Monitor.Log($"Manual freeze changed from {wasManualFreeze?.ToString() ?? "null"} to {ManualFreeze?.ToString() ?? "null"}.");
-            if (priorTickInterval != TickInterval)
-                Monitor.Log($"TickInterval changed from {priorTickInterval} to {TickInterval}.");
+            if (was_auto_freeze != AutoFreeze)
+                _monitor.Log($"Auto freeze changed from {was_auto_freeze} to {AutoFreeze}.");
+            if (was_manual_freeze != _manualFreeze)
+                _monitor.Log(
+                    $"Manual freeze changed from {was_manual_freeze?.ToString() ?? "null"} to {_manualFreeze?.ToString() ?? "null"}.");
+            if (prior_tick_interval != TickInterval)
+                _monitor.Log($"TickInterval changed from {prior_tick_interval} to {TickInterval}.");
 
 
             if (notifyOfUpdates || notifyOfMultiplayerUpdates && Context.IsMultiplayer)
             {
                 switch (AutoFreeze)
                 {
-                    case AutoFreezeReason.FrozenAtTime when IsTimeFrozen && !wasFrozen:
-                        Monitor.Log($"Time automatically set to frozen at {Game1.timeOfDay}.", LogLevel.Debug);
+                    case AutoFreezeReason.FrozenAtTime when IsTimeFrozen && !was_frozen:
+                        _monitor.Log($"Time automatically set to frozen at {Game1.timeOfDay}.", LogLevel.Debug);
                         Notifier.ShortNotify(I18n.Message_OnTimeChange_TimeStopped());
                         break;
 
-                    case AutoFreezeReason.FrozenAtTime when IsTimeFrozen && (!Context.IsMultiplayer || notifyOfMultiplayerUpdates && !wasFrozen):
+                    case AutoFreezeReason.FrozenAtTime when IsTimeFrozen &&
+                                                            (!Context.IsMultiplayer ||
+                                                             notifyOfMultiplayerUpdates && !was_frozen):
                         Notifier.ShortNotify(I18n.Message_OnLocationChange_TimeStoppedGlobally());
                         break;
 
-                    case AutoFreezeReason.FrozenForLocation when IsTimeFrozen && (!Context.IsMultiplayer || notifyOfMultiplayerUpdates && !wasFrozen):
+                    case AutoFreezeReason.FrozenForLocation when IsTimeFrozen &&
+                                                                 (!Context.IsMultiplayer ||
+                                                                  notifyOfMultiplayerUpdates && !was_frozen):
                         Notifier.ShortNotify(I18n.Message_OnLocationChange_TimeStoppedHere());
                         break;
 
-                    case AutoFreezeReason.None when !IsTimeFrozen && (wasFrozen || priorTickInterval != TickInterval) && (!Context.IsMultiplayer || notifyOfMultiplayerUpdates):
+                    case AutoFreezeReason.None when !IsTimeFrozen && (was_frozen || prior_tick_interval != TickInterval) &&
+                                                    (!Context.IsMultiplayer || notifyOfMultiplayerUpdates):
                         Notifier.ShortNotify(I18n.Message_OnLocationChange_TimeSpeedHere(seconds: TickInterval / 1000));
                         break;
 
