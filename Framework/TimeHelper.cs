@@ -19,6 +19,9 @@ namespace ItsStardewTime.Framework
         private int _lastGameTime = Game1.timeOfDay;
         private int _lastGameTimeInterval;
         private readonly bool _useGameTimeInterval;
+        
+        internal int TimeInMinutes => Game1.timeOfDay +
+                                      Math.Min(9, (int)(10d * TimeMaster.TimeSpeed.TimeHelper.TickProgress));
 
         /*********
         ** Accessors

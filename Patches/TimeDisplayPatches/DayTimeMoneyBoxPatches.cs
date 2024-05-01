@@ -74,8 +74,9 @@ namespace ItsStardewTime.Patches.TimeDisplayPatches
                 HandleDateText(__instance, b, font, in source_rect);
                 HandleClock(__instance, b, in font, in source_rect);
                 HandleSeasonAndWeather(__instance, b);
-                HandlePauseX(__instance, b);
                 HandleTimeDial(__instance, b);
+                HandlePauseX(__instance, b);
+
             }
             catch (Exception ex)
             {
@@ -91,12 +92,13 @@ namespace ItsStardewTime.Patches.TimeDisplayPatches
             in Rectangle sourceRect
         )
         {
+
             // N.B. The original game code does not use the timeOfDayString function to calculate the time string
             // for the display box. 
             // It instead uses a separate set of logic to essentially do the same thing. Since we already patch this
             // function with our own logic, we're just reusing it here to get the same string and avoid duplication.
             // If things start misbehaving with the reported time, we may need to revisit this.
-            string time_of_day_string = Game1.getTimeOfDayString(Game1.timeOfDay);
+            string time_of_day_string = Game1.getTimeOfDayString(TimeMaster.TimeSpeed.TimeHelper.TimeInMinutes);
             Vector2 timestring_dimensions = Game1.dialogueFont.MeasureString(time_of_day_string);
             Vector2 vector2_4 = new Vector2
             (

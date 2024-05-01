@@ -15,26 +15,8 @@ internal class TimeOfDayStringPatches
             harmony.Patch
             (
                 original: AccessTools.Method(typeof(Game1), nameof(Game1.getTimeOfDayString)),
-                prefix: new HarmonyMethod(typeof(TimeOfDayStringPatches), nameof(GetTimeOfDayString_Prefix)),
                 postfix: new HarmonyMethod(typeof(TimeOfDayStringPatches), nameof(GetTimeOfDayString_Postfix))
             );
-        }
-
-        internal static bool GetTimeOfDayString_Prefix(ref int time)
-        {
-            try
-            {
-                if (TimeController.Config.DisplayMinutes)
-                {
-                    time += Math.Min(9, (int)(10d * TimeMaster.TimeSpeed.TimeHelper.TickProgress));
-                }
-            }
-            catch (Exception ex)
-            {
-                TimeController.Monitor.Log($"Failed to run patch:\n{ex}", LogLevel.Error);
-            }
-
-            return true;
         }
 
         /// <summary>

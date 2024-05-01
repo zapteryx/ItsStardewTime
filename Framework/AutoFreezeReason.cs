@@ -1,6 +1,7 @@
 namespace ItsStardewTime.Framework
 {
     /// <summary>The reasons for automated time freezes.</summary>
+    /// Can't believe the original author didn't call this AutoFreason.
     internal enum AutoFreezeReason
     {
         /// <summary>No freeze currently applies.</summary>
