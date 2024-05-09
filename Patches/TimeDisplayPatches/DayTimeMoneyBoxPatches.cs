@@ -113,7 +113,7 @@ namespace ItsStardewTime.Patches.TimeDisplayPatches
                 (float)
                 (
                     sourceRect.Y * 
-                    // N.B. The original mode used a ternary to determine this number, but both values were identical
+                    // N.B. the original code used a ternary to determine this number, but both values were identical
                     0.3100000023841858 -
                     timestring_dimensions.Y /
                     2.0 +
@@ -194,7 +194,7 @@ namespace ItsStardewTime.Patches.TimeDisplayPatches
             Vector2 vector2_2 = new Vector2
             (
                 (float)(sourceRect.X * (9.0 / 16.0) - vector2_1.X / 2.0),
-                // N.B. The original mode used a ternary to determine this number, but both values were identical
+                // N.B. the original code used a ternary to determine this number, but both values were identical
                 (float)(sourceRect.Y * 0.10000000149011612 - vector2_1.Y / 2.0)
             );
             Utility.drawTextWithShadow

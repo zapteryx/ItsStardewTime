@@ -14,8 +14,7 @@ namespace ItsStardewTime.Patches
             harmony.Patch
             (
                 original: AccessTools.Method(typeof(MineShaft), nameof(MineShaft.enterMineShaft)),
-                transpiler: new HarmonyMethod
-                    (typeof(SkullCavernJumpPatches), nameof(SkullCavernJumpPatches.EnterMineShaft_Transpile))
+                transpiler: new HarmonyMethod(typeof(SkullCavernJumpPatches), nameof(EnterMineShaft_Transpile))
             );
         }
 
