@@ -24,27 +24,32 @@ namespace ItsStardewTime.Framework
         }
 
         // Host managed
-        private bool shouldAdjustTimeSpeed = true;
-        private readonly PlayerStates playerStates;
-        private readonly Dictionary<Monster, Vector2> monsterLocks = new(20);
+        private bool _shouldAdjustTimeSpeed = true;
+        private readonly PlayerStates _playerStates;
+        private readonly Dictionary<Monster, Vector2> _monsterLocks = new(20);
 
         // client specific
-        private readonly PerScreen<ScreenState> ClientSideState = new(() => new());
+        private readonly PerScreen<ScreenState> _clientSideState = new(() => new());
 
-        internal readonly IMonitor Monitor;
-        private readonly IManifest ModManifest;
-        private readonly IModHelper Helper;
-        private readonly ModConfig Config;
+        private readonly IManifest _modManifest;
+        private readonly IModHelper _helper;
+        
+        private static ModConfig _config = null!;
+
+        internal static ModConfig Config => _config;
+        
+        private static IMonitor _monitor = null!;
+        internal static IMonitor Monitor => _monitor;
 
         private static TimeSpeed TimeSpeed => TimeMaster.TimeSpeed;
 
         internal TimeController(IModHelper helper, IMonitor monitor, IManifest manifest, ModConfig config)
         {
-            Helper = helper;
-            Monitor = monitor;
-            ModManifest = manifest;
-            Config = config;
-            playerStates = new(config, monitor, helper, manifest);
+            _helper = helper;
+            _monitor = monitor;
+            _modManifest = manifest;
+            _config = config;
+            _playerStates = new(config, monitor, helper, manifest);
 
             helper.Events.GameLoop.TimeChanged += (s, e) =>
             {
@@ -53,8 +58,8 @@ namespace ItsStardewTime.Framework
                     return;
                 }
 
-                AutoFreezeReason autoFreeze = Config.ShouldFreeze(Game1.timeOfDay, Game1.currentLocation);
-                playerStates.UpdateTimeSpeedSettings(Game1.player.UniqueMultiplayerID, autoFreeze: autoFreeze);
+                AutoFreezeReason auto_freeze = Config.ShouldFreeze(Game1.timeOfDay, Game1.currentLocation);
+                _playerStates.UpdateTimeSpeedSettings(Game1.player.UniqueMultiplayerID, autoFreeze: auto_freeze);
             };
 
             helper.Events.GameLoop.DayStarted += (s, e) =>
@@ -64,13 +69,13 @@ namespace ItsStardewTime.Framework
                     return;
                 }
 
-                playerStates.DayStarted();
+                _playerStates.DayStarted();
 
-                shouldAdjustTimeSpeed = Config.ShouldScale(Game1.currentSeason, Game1.dayOfMonth);
-                int tickInterval = GetTickInterval(Game1.currentLocation);
-                AutoFreezeReason autoFreeze = Config.ShouldFreeze(Game1.timeOfDay, Game1.currentLocation);
-                playerStates.UpdateTimeSpeedSettings(Game1.player.UniqueMultiplayerID, tickInterval: tickInterval,
-                    autoFreeze: autoFreeze);
+                _shouldAdjustTimeSpeed = Config.ShouldScale(Game1.currentSeason, Game1.dayOfMonth);
+                int tick_interval = GetTickInterval(Game1.currentLocation);
+                AutoFreezeReason auto_freeze = Config.ShouldFreeze(Game1.timeOfDay, Game1.currentLocation);
+                _playerStates.UpdateTimeSpeedSettings(Game1.player.UniqueMultiplayerID, tickInterval: tick_interval,
+                    autoFreeze: auto_freeze);
             };
 
             helper.Events.Player.Warped += (s, e) =>
@@ -80,14 +85,14 @@ namespace ItsStardewTime.Framework
                     return;
                 }
 
-                int tickInterval = GetTickInterval(e.NewLocation);
-                AutoFreezeReason autoFreeze = Config.ShouldFreeze(Game1.timeOfDay, e.NewLocation);
-                playerStates.UpdateTimeSpeedSettings(Game1.player.UniqueMultiplayerID, tickInterval: tickInterval,
-                    autoFreeze: autoFreeze, skipUpdate: true);
+                int tick_interval = GetTickInterval(e.NewLocation);
+                AutoFreezeReason auto_freeze = Config.ShouldFreeze(Game1.timeOfDay, e.NewLocation);
+                _playerStates.UpdateTimeSpeedSettings(Game1.player.UniqueMultiplayerID, tickInterval: tick_interval,
+                    autoFreeze: auto_freeze, skipUpdate: true);
                 if (Config.TimeFlowChangeNotifications)
                 {
                     Monitor.Log(
-                        $"Time speed settings for location '{e.NewLocation.Name}': {tickInterval / 1000f:N} seconds per 10 minutes",
+                        $"Time speed settings for location '{e.NewLocation.Name}': {tick_interval / 1000f:N} seconds per 10 minutes",
                         LogLevel.Debug);
                 }
             };
@@ -102,9 +107,9 @@ namespace ItsStardewTime.Framework
             {
                 if (Context.IsMainPlayer)
                 {
-                    ClientSideState.Value.ShouldLockMonsters = Config.LockMonsters;
-                    playerStates.Clear();
-                    playerStates.Add(Game1.player.UniqueMultiplayerID);
+                    _clientSideState.Value.ShouldLockMonsters = Config.LockMonsters;
+                    _playerStates.Clear();
+                    _playerStates.Add(Game1.player.UniqueMultiplayerID);
                 }
             };
 
@@ -125,16 +130,16 @@ namespace ItsStardewTime.Framework
                 return;
             }
 
-            ClientSideState.Value.ShouldLockMonsters = Config.LockMonsters;
-            Helper.Multiplayer.SendMessage(Config.LockMonsters, Messages.SetLockMonstersMode,
-                new string[1] { ModManifest.UniqueID });
+            _clientSideState.Value.ShouldLockMonsters = Config.LockMonsters;
+            _helper.Multiplayer.SendMessage(Config.LockMonsters, Messages.SetLockMonstersMode,
+                new string[1] { _modManifest.UniqueID });
 
-            shouldAdjustTimeSpeed = Config.ShouldScale(Game1.currentSeason, Game1.dayOfMonth);
-            int tickInterval = GetTickInterval(Game1.currentLocation);
-            AutoFreezeReason autoFreeze = Config.ShouldFreeze(Game1.timeOfDay, Game1.currentLocation);
-            playerStates.ForceRecompute();
-            playerStates.UpdateTimeSpeedSettings(Game1.player.UniqueMultiplayerID, tickInterval: tickInterval,
-                autoFreeze: autoFreeze);
+            _shouldAdjustTimeSpeed = Config.ShouldScale(Game1.currentSeason, Game1.dayOfMonth);
+            int tick_interval = GetTickInterval(Game1.currentLocation);
+            AutoFreezeReason auto_freeze = Config.ShouldFreeze(Game1.timeOfDay, Game1.currentLocation);
+            _playerStates.ForceRecompute();
+            _playerStates.UpdateTimeSpeedSettings(Game1.player.UniqueMultiplayerID, tickInterval: tick_interval,
+                autoFreeze: auto_freeze);
         }
 
         private void GameLoop_UpdateTicked(object? sender, StardewModdingAPI.Events.UpdateTickedEventArgs e)
@@ -150,7 +155,7 @@ namespace ItsStardewTime.Framework
             }
 
             // Move this to Warped event when it is raised for remote players.
-            playerStates.PollForLocationUpdates();
+            _playerStates.PollForLocationUpdates();
         }
 
         private void Input_ButtonPressed(object? sender, StardewModdingAPI.Events.ButtonPressedEventArgs e)
@@ -188,13 +193,13 @@ namespace ItsStardewTime.Framework
             }
             else if (Config.Keys.FreezeTime.JustPressed())
             {
-                bool freezeOverride = !TimeSpeed.IsTimeFrozen;
-                playerStates.SetFreezeOverride(freezeOverride);
-                if (freezeOverride)
+                bool freeze_override = !TimeSpeed.IsTimeFrozen;
+                _playerStates.SetFreezeOverride(freeze_override);
+                if (freeze_override)
                 {
                     Monitor.Log("Time is manually frozen.", LogLevel.Info);
-                    Helper.Multiplayer.SendMessage("The host has paused.", Messages.VoteUpdateMessage,
-                        new[] { ModManifest.UniqueID });
+                    _helper.Multiplayer.SendMessage("The host has paused.", Messages.VoteUpdateMessage,
+                        new[] { _modManifest.UniqueID });
                     if (Config.TimeFlowChangeNotifications)
                     {
                         Notifier.QuickNotify(I18n.Message_TimeStopped());
@@ -203,8 +208,8 @@ namespace ItsStardewTime.Framework
                 else
                 {
                     Monitor.Log($"Time is manually unfrozen at \"{Game1.currentLocation?.Name}\".", LogLevel.Info);
-                    Helper.Multiplayer.SendMessage("The host has unpaused.", Messages.VoteUpdateMessage,
-                        new[] { ModManifest.UniqueID });
+                    _helper.Multiplayer.SendMessage("The host has unpaused.", Messages.VoteUpdateMessage,
+                        new[] { _modManifest.UniqueID });
                     if (Config.TimeFlowChangeNotifications)
                     {
                         Notifier.QuickNotify(I18n.Message_TimeResumed());
@@ -225,7 +230,7 @@ namespace ItsStardewTime.Framework
                         change /= 10;
                 }
 
-                playerStates.AdjustTickInterval(Game1.MasterPlayer.UniqueMultiplayerID, increase ? change : -change);
+                _playerStates.AdjustTickInterval(Game1.MasterPlayer.UniqueMultiplayerID, increase ? change : -change);
             }
         }
 
@@ -233,7 +238,7 @@ namespace ItsStardewTime.Framework
         {
             if (Context.IsMainPlayer)
             {
-                playerStates.Remove(e.Peer.PlayerID);
+                _playerStates.Remove(e.Peer.PlayerID);
             }
         }
 
@@ -244,41 +249,41 @@ namespace ItsStardewTime.Framework
                 return;
             }
 
-            IMultiplayerPeerMod? timeMasterMod = e.Peer.GetMod(ModManifest.UniqueID);
-            if (timeMasterMod == null)
+            IMultiplayerPeerMod? time_master_mod = e.Peer.GetMod(_modManifest.UniqueID);
+            if (time_master_mod == null)
             {
                 Notifier.NotifyErrorInChatBox(
-                    I18n.Message_PlayerDoesNotHaveMod(Game1.getFarmer(e.Peer.PlayerID).Name, ModManifest.Name));
-                Monitor.Log(I18n.Message_PlayerDoesNotHaveMod(Game1.getFarmer(e.Peer.PlayerID).Name, ModManifest.Name),
+                    I18n.Message_PlayerDoesNotHaveMod(Game1.getFarmer(e.Peer.PlayerID).Name, _modManifest.Name));
+                Monitor.Log(I18n.Message_PlayerDoesNotHaveMod(Game1.getFarmer(e.Peer.PlayerID).Name, _modManifest.Name),
                     LogLevel.Warn);
             }
-            else if (!timeMasterMod.Version.Equals(ModManifest.Version))
+            else if (!time_master_mod.Version.Equals(_modManifest.Version))
             {
                 Notifier.NotifyErrorInChatBox(
                     I18n.Message_PlayerDoesNotHaveCorrectVersion(Game1.getFarmer(e.Peer.PlayerID).Name,
-                        ModManifest.Version));
+                        _modManifest.Version));
                 Monitor.Log(
                     I18n.Message_PlayerDoesNotHaveCorrectVersion(Game1.getFarmer(e.Peer.PlayerID).Name,
-                        ModManifest.Version), LogLevel.Warn);
-                Notifier.NotifyErrorInChatBox(I18n.Message_PlayerVersionComparison(ModManifest.Version,
-                    Game1.getFarmer(e.Peer.PlayerID).Name, timeMasterMod.Version));
+                        _modManifest.Version), LogLevel.Warn);
+                Notifier.NotifyErrorInChatBox(I18n.Message_PlayerVersionComparison(_modManifest.Version,
+                    Game1.getFarmer(e.Peer.PlayerID).Name, time_master_mod.Version));
                 Monitor.Log(
-                    I18n.Message_PlayerVersionComparison(ModManifest.Version, Game1.getFarmer(e.Peer.PlayerID).Name,
-                        timeMasterMod.Version), LogLevel.Warn);
+                    I18n.Message_PlayerVersionComparison(_modManifest.Version, Game1.getFarmer(e.Peer.PlayerID).Name,
+                        time_master_mod.Version), LogLevel.Warn);
             }
 
-            playerStates.Add(e.Peer.PlayerID);
+            _playerStates.Add(e.Peer.PlayerID);
         }
 
         private void Multiplayer_ModMessageReceived(object? sender,
             StardewModdingAPI.Events.ModMessageReceivedEventArgs e)
         {
-            if (e.FromModID != ModManifest.UniqueID)
+            if (e.FromModID != _modManifest.UniqueID)
             {
                 return;
             }
 
-            var clientSideState = ClientSideState.Value;
+            var client_side_state = _clientSideState.Value;
 
             try
             {
@@ -294,13 +299,15 @@ namespace ItsStardewTime.Framework
 
                     case Messages.SetTimeSpeed:
                         var command = e.ReadAs<SetTimeSpeedCommand>();
-                        TimeSpeed.UpdateTimeSpeed(
+                        TimeSpeed.UpdateTimeSpeed
+                        (
                             tickInterval: command.TickInterval,
                             autoFreeze: command.AutoFreeze,
                             manualOverride: command.ManualFreeze,
                             clearPreviousOverrides: command.ManualFreeze == null,
                             notifyOfUpdates: Config.TimeFlowChangeNotifications,
-                            notifyOfMultiplayerUpdates: Config.TimeFlowChangeNotificationsMultiplayer);
+                            notifyOfMultiplayerUpdates: Config.TimeFlowChangeNotificationsMultiplayer
+                        );
 
                         // We ignore the case where the client clock is slightly behind (timeOfDay is equal and
                         // tick progess behind) so that the clock waits until the next world state update instead
@@ -313,25 +320,25 @@ namespace ItsStardewTime.Framework
                         break;
 
                     case Messages.SetLockMonstersMode:
-                        clientSideState.ShouldLockMonsters = e.ReadAs<bool>();
+                        client_side_state.ShouldLockMonsters = e.ReadAs<bool>();
                         break;
 
                     case Messages.SetVoteState:
-                        clientSideState.IsVoteForPauseAffirmative = e.ReadAs<bool>();
+                        client_side_state.IsVoteForPauseAffirmative = e.ReadAs<bool>();
                         break;
 
                     case Messages.UpdatePauseRequestState when Context.IsMainPlayer:
-                        bool requestingPause = e.ReadAs<bool>();
-                        playerStates.UpdatePauseState(e.FromPlayerID, requestingPause);
+                        bool requesting_pause = e.ReadAs<bool>();
+                        _playerStates.UpdatePauseState(e.FromPlayerID, requesting_pause);
                         break;
 
                     case Messages.UpdateVoteForPause when Context.IsMainPlayer:
-                        bool newVote = e.ReadAs<bool>();
-                        playerStates.UpdateVote(e.FromPlayerID, newVote);
+                        bool new_vote = e.ReadAs<bool>();
+                        _playerStates.UpdateVote(e.FromPlayerID, new_vote);
                         break;
 
                     case Messages.UpdateEventState when Context.IsMainPlayer:
-                        playerStates.UpdateEventActivity(e.FromPlayerID, e.ReadAs<bool>());
+                        _playerStates.UpdateEventActivity(e.FromPlayerID, e.ReadAs<bool>());
                         break;
 
                     default:
@@ -361,61 +368,61 @@ namespace ItsStardewTime.Framework
                 return;
             }
 
-            var clientSideState = ClientSideState.Value;
-            if (clientSideState.LastEventState != Game1.eventUp)
+            var client_side_state = _clientSideState.Value;
+            if (client_side_state.LastEventState != Game1.eventUp)
             {
-                clientSideState.LastEventState = Game1.eventUp;
+                client_side_state.LastEventState = Game1.eventUp;
                 if (Context.IsMainPlayer)
                 {
-                    playerStates.UpdateEventActivity(Game1.player.UniqueMultiplayerID, Game1.eventUp);
+                    _playerStates.UpdateEventActivity(Game1.player.UniqueMultiplayerID, Game1.eventUp);
                 }
                 else
                 {
-                    Helper.Multiplayer.SendMessage(Game1.eventUp, Messages.UpdateEventState,
-                        new string[1] { ModManifest.UniqueID }, new long[1] { Game1.MasterPlayer.UniqueMultiplayerID });
+                    _helper.Multiplayer.SendMessage(Game1.eventUp, Messages.UpdateEventState,
+                        new string[1] { _modManifest.UniqueID }, new long[1] { Game1.MasterPlayer.UniqueMultiplayerID });
                 }
             }
 
-            bool clientRequestsPause = ClientShouldRequestPause();
-            if (clientSideState.PauseIsRequested != clientRequestsPause)
+            bool client_requests_pause = ClientShouldRequestPause();
+            if (client_side_state.PauseIsRequested != client_requests_pause)
             {
-                clientSideState.PauseIsRequested = clientRequestsPause;
+                client_side_state.PauseIsRequested = client_requests_pause;
                 if (Context.IsMainPlayer)
                 {
-                    playerStates.UpdatePauseState(Game1.player.UniqueMultiplayerID, clientRequestsPause);
+                    _playerStates.UpdatePauseState(Game1.player.UniqueMultiplayerID, client_requests_pause);
                 }
                 else
                 {
-                    Helper.Multiplayer.SendMessage(clientRequestsPause, Messages.UpdatePauseRequestState,
-                        new string[1] { ModManifest.UniqueID }, new long[1] { Game1.MasterPlayer.UniqueMultiplayerID });
+                    _helper.Multiplayer.SendMessage(client_requests_pause, Messages.UpdatePauseRequestState,
+                        new string[1] { _modManifest.UniqueID }, new long[1] { Game1.MasterPlayer.UniqueMultiplayerID });
                 }
             }
 
-            bool isTimeFrozen = TimeSpeed.IsTimeFrozen;
-            bool hasFrozenStateChanged = isTimeFrozen != clientSideState.WasTimeFrozen;
-            clientSideState.WasTimeFrozen = isTimeFrozen;
-            if (!hasFrozenStateChanged && !isTimeFrozen)
+            bool is_time_frozen = TimeSpeed.IsTimeFrozen;
+            bool has_frozen_state_changed = is_time_frozen != client_side_state.WasTimeFrozen;
+            client_side_state.WasTimeFrozen = is_time_frozen;
+            if (!has_frozen_state_changed && !is_time_frozen)
             {
                 return;
             }
 
-            if (hasFrozenStateChanged && !isTimeFrozen)
+            if (has_frozen_state_changed && !is_time_frozen)
             {
                 if (Context.IsMainPlayer)
                 {
-                    monsterLocks.Clear();
+                    _monsterLocks.Clear();
                 }
 
-                clientSideState.FoodDuration = -100;
-                clientSideState.DrinkDuration = -100;
-                clientSideState.OtherBuffsDurations.Clear();
-                clientSideState.HealthLock = -100;
+                client_side_state.FoodDuration = -100;
+                client_side_state.DrinkDuration = -100;
+                client_side_state.OtherBuffsDurations.Clear();
+                client_side_state.HealthLock = -100;
                 Game1.player.temporaryInvincibilityTimer = 0;
                 Game1.player.currentTemporaryInvincibilityDuration = 0;
                 Game1.player.temporarilyInvincible = false;
             }
 
-            if (isTimeFrozen)
+            if (is_time_frozen)
             {
                 if (Context.IsMainPlayer)
                 {
@@ -423,8 +430,8 @@ namespace ItsStardewTime.Framework
                     // sure the currently paused player remains the one that requested the least pause time.
                     if (e.IsMultipleOf(10u * 7u) && Config.PauseMode == PauseMode.Fair)
                     {
-                        playerStates.ForceRecompute();
-                        playerStates.UpdateAllClients();
+                        _playerStates.ForceRecompute();
+                        _playerStates.UpdateAllClients();
                     }
 
                     foreach (GameLocation location in Game1.locations)
@@ -440,18 +447,18 @@ namespace ItsStardewTime.Framework
                         }
                     }
 
-                    if (clientSideState.ShouldLockMonsters)
+                    if (client_side_state.ShouldLockMonsters)
                     {
-                        HashSet<GameLocation> farmerLocations = new();
+                        HashSet<GameLocation> farmer_locations = new();
                         foreach (Farmer f in Game1.getOnlineFarmers())
                         {
                             if (f.currentLocation != null)
                             {
-                                farmerLocations.Add(f.currentLocation);
+                                farmer_locations.Add(f.currentLocation);
                             }
                         }
 
-                        foreach (GameLocation location in farmerLocations)
+                        foreach (GameLocation location in farmer_locations)
                         {
                             if (location is Farm farm)
                             {
@@ -460,9 +467,9 @@ namespace ItsStardewTime.Framework
                                     animal2.pauseTimer = 250;
                                 }
                             }
-                            else if (location is AnimalHouse animalHouse)
+                            else if (location is AnimalHouse animal_house)
                             {
-                                foreach (FarmAnimal animal in animalHouse.animals.Values)
+                                foreach (FarmAnimal animal in animal_house.animals.Values)
                                 {
                                     animal.pauseTimer = 250;
                                 }
@@ -474,16 +481,16 @@ namespace ItsStardewTime.Framework
                                 {
                                     monster.invincibleCountdown = 250;
                                     monster.movementPause = 250;
-                                    if (monsterLocks.TryGetValue(monster, out var lockedPosition))
+                                    if (_monsterLocks.TryGetValue(monster, out var locked_position))
                                     {
-                                        if (monster.Position != lockedPosition)
+                                        if (monster.Position != locked_position)
                                         {
-                                            monster.Position = lockedPosition;
+                                            monster.Position = locked_position;
                                         }
                                     }
                                     else
                                     {
-                                        monsterLocks[monster] = monster.Position;
+                                        _monsterLocks[monster] = monster.Position;
                                     }
                                 }
                             }
@@ -492,7 +499,7 @@ namespace ItsStardewTime.Framework
                 }
                 else
                 {
-                    if (clientSideState.ShouldLockMonsters && Game1.currentLocation != null)
+                    if (client_side_state.ShouldLockMonsters && Game1.currentLocation != null)
                     {
                         if (Game1.currentLocation is Farm farm)
                         {
@@ -501,9 +508,9 @@ namespace ItsStardewTime.Framework
                                 animal2.pauseTimer = 250;
                             }
                         }
-                        else if (Game1.currentLocation is AnimalHouse animalHouse)
+                        else if (Game1.currentLocation is AnimalHouse animal_house)
                         {
-                            foreach (FarmAnimal animal in animalHouse.animals.Values)
+                            foreach (FarmAnimal animal in animal_house.animals.Values)
                             {
                                 animal.pauseTimer = 250;
                             }
@@ -522,74 +529,73 @@ namespace ItsStardewTime.Framework
 
                 var buffs = Game1.buffsDisplay.GetSortedBuffs();
                 // find food buff
-                Buff? foodBuff = buffs.FirstOrDefault(b => b.source == "food");
+                Buff? food_buff = buffs.FirstOrDefault(b => b.source == "food");
                 // find drink buff
-                Buff? drinkBuff = buffs.FirstOrDefault(b => b.source == "drink");
+                Buff? drink_buff = buffs.FirstOrDefault(b => b.source == "drink");
                 // find other buffs
-                List<Buff> otherBuffs = buffs.Where(b => b.source != "food" && b.source != "drink").ToList();
+                List<Buff> other_buffs = buffs.Where(b => b.source != "food" && b.source != "drink").ToList();
 
-                if (foodBuff != null)
+                if (food_buff != null)
                 {
-                    if (foodBuff.millisecondsDuration > clientSideState.FoodDuration)
+                    if (food_buff.millisecondsDuration > client_side_state.FoodDuration)
                     {
-                        clientSideState.FoodDuration = foodBuff.millisecondsDuration;
+                        client_side_state.FoodDuration = food_buff.millisecondsDuration;
                     }
                     else
                     {
-                        foodBuff.millisecondsDuration = clientSideState.FoodDuration;
+                        food_buff.millisecondsDuration = client_side_state.FoodDuration;
                     }
                 }
 
-                if (drinkBuff != null)
+                if (drink_buff != null)
                 {
-                    if (drinkBuff.millisecondsDuration > clientSideState.DrinkDuration)
+                    if (drink_buff.millisecondsDuration > client_side_state.DrinkDuration)
                     {
-                        clientSideState.DrinkDuration = drinkBuff.millisecondsDuration;
+                        client_side_state.DrinkDuration = drink_buff.millisecondsDuration;
                     }
                     else
                     {
-                        drinkBuff.millisecondsDuration = clientSideState.DrinkDuration;
+                        drink_buff.millisecondsDuration = client_side_state.DrinkDuration;
                     }
                 }
-                
-                if (otherBuffs.Count > 0)
+
+                if (other_buffs.Count > 0)
                 {
-                    if (clientSideState.OtherBuffsDurations.Count == 0)
+                    if (client_side_state.OtherBuffsDurations.Count == 0)
                     {
-                        foreach (Buff buff in otherBuffs)
+                        foreach (Buff buff in other_buffs)
                         {
                             if (buff.millisecondsDuration > 0)
                             {
-                                clientSideState.OtherBuffsDurations[buff] = buff.millisecondsDuration;
+                                client_side_state.OtherBuffsDurations[buff] = buff.millisecondsDuration;
                             }
                         }
                     }
                     else
                     {
-                        foreach (Buff buff in otherBuffs)
+                        foreach (Buff buff in other_buffs)
                         {
-                            if (clientSideState.OtherBuffsDurations.TryGetValue(buff, out int duration))
+                            if (client_side_state.OtherBuffsDurations.TryGetValue(buff, out int duration))
                             {
                                 buff.millisecondsDuration = duration;
                             }
                         }
                     }
-
                 }
 
-                if (clientSideState.ShouldLockMonsters)
+                if (client_side_state.ShouldLockMonsters)
                 {
-                    if (clientSideState.HealthLock == -100)
+                    if (client_side_state.HealthLock == -100)
                     {
-                        clientSideState.HealthLock = Game1.player.health;
+                        client_side_state.HealthLock = Game1.player.health;
                     }
 
-                    if (Game1.player.health > clientSideState.HealthLock)
+                    if (Game1.player.health > client_side_state.HealthLock)
                     {
-                        clientSideState.HealthLock = Game1.player.health;
+                        client_side_state.HealthLock = Game1.player.health;
                     }
 
-                    Game1.player.health = clientSideState.HealthLock;
+                    Game1.player.health = client_side_state.HealthLock;
                     Game1.player.temporarilyInvincible = true;
                     Game1.player.temporaryInvincibilityTimer = -1000000000;
                 }
@@ -598,16 +604,16 @@ namespace ItsStardewTime.Framework
 
         private void VotePauseToggle()
         {
-            var clientSideState = ClientSideState.Value;
-            clientSideState.IsVoteForPauseAffirmative = !clientSideState.IsVoteForPauseAffirmative;
+            var client_side_state = _clientSideState.Value;
+            client_side_state.IsVoteForPauseAffirmative = !client_side_state.IsVoteForPauseAffirmative;
             if (Context.IsMainPlayer)
             {
-                playerStates.UpdateVote(Game1.player.UniqueMultiplayerID, clientSideState.IsVoteForPauseAffirmative);
+                _playerStates.UpdateVote(Game1.player.UniqueMultiplayerID, client_side_state.IsVoteForPauseAffirmative);
             }
             else
             {
-                Helper.Multiplayer.SendMessage(clientSideState.IsVoteForPauseAffirmative, Messages.UpdateVoteForPause,
-                    modIDs: new[] { ModManifest.UniqueID },
+                _helper.Multiplayer.SendMessage(client_side_state.IsVoteForPauseAffirmative, Messages.UpdateVoteForPause,
+                    modIDs: new[] { _modManifest.UniqueID },
                     playerIDs: new[] { Game1.MasterPlayer.UniqueMultiplayerID });
             }
         }
@@ -618,19 +624,23 @@ namespace ItsStardewTime.Framework
             {
                 return true;
             }
-            else if (Game1.IsMultiplayer && Game1.netWorldState.Value.IsTimePaused)
+
+            if (Game1.IsMultiplayer && Game1.netWorldState.Value.IsTimePaused)
             {
                 return true;
             }
-            else if (Game1.activeClickableMenu is BobberBar)
+
+            if (Game1.activeClickableMenu is BobberBar)
             {
                 return true;
             }
-            else if (Game1.currentMinigame != null)
+
+            if (Game1.currentMinigame != null)
             {
                 return true;
             }
-            else if (Game1.eventUp)
+
+            if (Game1.eventUp)
             {
                 return true;
             }
@@ -640,22 +650,20 @@ namespace ItsStardewTime.Framework
 
         private int GetTickInterval(GameLocation location)
         {
-            if (shouldAdjustTimeSpeed)
+            if (_shouldAdjustTimeSpeed)
             {
                 return Config.GetMillisecondsPerTenMinuteInterval(location);
             }
-            else
-            {
-                return (int)TimeHelper.CurrentDefaultTickInterval;
-            }
+
+            return (int)TimeHelper.CurrentDefaultTickInterval;
         }
 
         internal void UpdateHealthLock(int newHealthLock)
         {
-            var clientSideState = ClientSideState.Value;
-            if (clientSideState.HealthLock != -100)
+            var client_side_state = _clientSideState.Value;
+            if (client_side_state.HealthLock != -100)
             {
-                clientSideState.HealthLock = newHealthLock;
+                client_side_state.HealthLock = newHealthLock;
             }
         }
     }

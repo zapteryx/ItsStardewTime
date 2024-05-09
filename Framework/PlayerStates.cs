@@ -8,26 +8,20 @@ namespace ItsStardewTime.Framework
         private class PlayerState
         {
             private bool _isModified = true;
-            private bool _isVoteForPauseAffirmative = false;
-            private bool _isEventActive = false;
+            private bool _isVoteForPauseAffirmative;
+            private bool _isEventActive;
             private int _tickInterval = Game1.realMilliSecondsPerGameTenMinutes;
-            private int _tickOfLastPause = 0;
-            private int _ticksOfPriorPause = 0;
-            private bool _isPaused = false;
+            private int _tickOfLastPause;
+            private int _ticksOfPriorPause;
+            private bool _isPaused;
             private AutoFreezeReason _autoFreezeReason = AutoFreezeReason.None;
 
             internal bool IsPaused => _isPaused || _autoFreezeReason != AutoFreezeReason.None;
 
             internal bool IsModified
             {
-                get
-                {
-                    return _isModified;
-                }
-                set
-                {
-                    _isModified = value;
-                }
+                get { return _isModified; }
+                set { _isModified = value; }
             }
 
             internal int TotalTicksPaused
@@ -43,10 +37,8 @@ namespace ItsStardewTime.Framework
                     {
                         return _ticksOfPriorPause + (Game1.ticks - _tickOfLastPause);
                     }
-                    else
-                    {
-                        return _ticksOfPriorPause;
-                    }
+
+                    return _ticksOfPriorPause;
                 }
             }
 
@@ -59,6 +51,7 @@ namespace ItsStardewTime.Framework
                     {
                         _isModified = true;
                     }
+
                     _isVoteForPauseAffirmative = value;
                 }
             }
@@ -72,6 +65,7 @@ namespace ItsStardewTime.Framework
                     {
                         _isModified = true;
                     }
+
                     _isEventActive = value;
                 }
             }
@@ -85,6 +79,7 @@ namespace ItsStardewTime.Framework
                     {
                         _isModified = true;
                     }
+
                     _tickInterval = value;
                 }
             }
@@ -98,6 +93,7 @@ namespace ItsStardewTime.Framework
                     {
                         _isModified = true;
                     }
+
                     _autoFreezeReason = value;
                 }
             }
@@ -151,7 +147,13 @@ namespace ItsStardewTime.Framework
         private AutoFreezeReason _cachedAutoFreeze;
         private bool? _freezeOverride;
 
-        public PlayerStates(ModConfig config, IMonitor monitor, IModHelper helper, IManifest manifest)
+        public PlayerStates
+        (
+            ModConfig config,
+            IMonitor monitor,
+            IModHelper helper,
+            IManifest manifest
+        )
         {
             _config = config;
             _monitor = monitor;
@@ -159,34 +161,58 @@ namespace ItsStardewTime.Framework
             _manifest = manifest;
         }
 
-        internal void Add(long playerID)
+        internal void Add(long playerId)
         {
-            bool allVotesAreYes = _playerStates.Values.All(s => s.IsVoteForPauseAffirmative);
+            bool all_votes_are_yes = _playerStates.Values.All(s => s.IsVoteForPauseAffirmative);
             PlayerState state = new();
-            _playerStates.Add(playerID, state);
-            var location = Game1.getFarmer(playerID)?.currentLocation;
+            _playerStates.Add(playerId, state);
+            var location = Game1.getFarmer(playerId)?.currentLocation;
             if (location == null)
             {
-                _monitor.Log($"Location missing for player. PlayerID={playerID}, Farmer={Game1.getFarmer(playerID)}, Name={Game1.getFarmer(playerID)?.Name}", LogLevel.Info);
+                _monitor.Log
+                (
+                    $"Location missing for player. PlayerID={playerId}, Farmer={Game1.getFarmer(playerId)}, Name={Game1.getFarmer(playerId)?.Name}",
+                    LogLevel.Info
+                );
             }
             else
             {
                 state.UpdateBasedOnLocation(location, _config);
             }
 
-            if (playerID != Game1.MasterPlayer.UniqueMultiplayerID)
+            if (playerId != Game1.MasterPlayer.UniqueMultiplayerID)
             {
-                _helper.Multiplayer.SendMessage(_config.LockMonsters, Messages.SetLockMonstersMode, new string[1] { _manifest.UniqueID }, new long[1] { playerID });
+                _helper.Multiplayer.SendMessage
+                (
+                    _config.LockMonsters,
+                    Messages.SetLockMonstersMode,
+                    new string[1] { _manifest.UniqueID },
+                    new long[1] { playerId }
+                );
                 if (_config.EnableVotePause)
                 {
-                    state.IsVoteForPauseAffirmative = allVotesAreYes;
-                    _helper.Multiplayer.SendMessage(allVotesAreYes, Messages.SetVoteState, new string[1] { _manifest.UniqueID }, new long[1] { playerID });
-                    if (allVotesAreYes)
+                    state.IsVoteForPauseAffirmative = all_votes_are_yes;
+                    _helper.Multiplayer.SendMessage
+                    (
+                        all_votes_are_yes,
+                        Messages.SetVoteState,
+                        new string[1] { _manifest.UniqueID },
+                        new long[1] { playerId }
+                    );
+                    if (all_votes_are_yes)
                     {
-                        _helper.Multiplayer.SendMessage(I18n.Message_PlayerJoinedAPausedGame(Game1.getFarmer(playerID).Name), Messages.VoteUpdateMessage, new string[1] { _manifest.UniqueID });
+                        _helper.Multiplayer.SendMessage
+                        (
+                            I18n.Message_PlayerJoinedAPausedGame(Game1.getFarmer(playerId).Name),
+                            Messages.VoteUpdateMessage,
+                            new string[1] { _manifest.UniqueID }
+                        );
                         if (_config.DisplayVotePauseMessages)
                         {
-                            Notifier.NotifyInChatBox(I18n.Message_PlayerJoinedAPausedGame(Game1.getFarmer(playerID).Name));
+                            Notifier.NotifyInChatBox
+                            (
+                                I18n.Message_PlayerJoinedAPausedGame(Game1.getFarmer(playerId).Name)
+                            );
                         }
                     }
                 }
@@ -196,9 +222,9 @@ namespace ItsStardewTime.Framework
             UpdateAllClients();
         }
 
-        internal void Remove(long playerID)
+        internal void Remove(long playerId)
         {
-            _playerStates.Remove(playerID);
+            _playerStates.Remove(playerId);
             _recomputationRequired = true;
             UpdateAllClients();
         }
@@ -229,47 +255,48 @@ namespace ItsStardewTime.Framework
             {
                 _recomputationRequired = true;
             }
+
             _freezeOverride = freezeOverride;
-            _monitor.Log($"SetFreezeOverride({_freezeOverride}): _recomputationRequired={_recomputationRequired}", LogLevel.Trace);
+            _monitor.Log($"SetFreezeOverride({_freezeOverride}): _recomputationRequired={_recomputationRequired}");
             UpdateAllClients();
         }
 
         internal void PollForLocationUpdates()
         {
-            bool lateToSendUpdates = _recomputationRequired;
-            bool modifiedState = false;
-            long mainPlayerID = Game1.MasterPlayer?.UniqueMultiplayerID ?? 0;
-            foreach (var (playerID, state) in _playerStates)
+            bool late_to_send_updates = _recomputationRequired;
+            bool modified_state = false;
+            long main_player_id = Game1.MasterPlayer?.UniqueMultiplayerID ?? 0;
+            foreach (var (player_id, state) in _playerStates)
             {
-                if (playerID == mainPlayerID)
+                if (player_id == main_player_id)
                 {
                     // skip main player, because main player is updated on Warped event
                     continue;
                 }
 
-                if (Game1.getFarmer(playerID)?.currentLocation is GameLocation location)
+                if (Game1.getFarmer(player_id)?.currentLocation is GameLocation location)
                 {
                     state.UpdateBasedOnLocation(location, _config);
                     if (state.IsModified)
                     {
-                        modifiedState = true;
+                        modified_state = true;
                         _recomputationRequired = true;
                     }
                 }
             }
 
             // Only update clients every other poll to avoid sending 3 messages while zoning
-            if (lateToSendUpdates && modifiedState)
+            if (late_to_send_updates && modified_state)
             {
                 UpdateAllClients();
             }
         }
 
-        internal void UpdateLocation(long playerID, GameLocation location)
+        internal void UpdateLocation(long playerId, GameLocation location)
         {
-            if (!_playerStates.TryGetValue(playerID, out var state))
+            if (!_playerStates.TryGetValue(playerId, out var state))
             {
-                _monitor.Log($"Found no player with ID={playerID}", LogLevel.Error);
+                _monitor.Log($"Found no player with ID={playerId}", LogLevel.Error);
                 return;
             }
 
@@ -282,11 +309,17 @@ namespace ItsStardewTime.Framework
             UpdateAllClients();
         }
 
-        internal void UpdateTimeSpeedSettings(long playerID, int? tickInterval = null, AutoFreezeReason? autoFreeze = null, bool skipUpdate = false)
+        internal void UpdateTimeSpeedSettings
+        (
+            long playerId,
+            int? tickInterval = null,
+            AutoFreezeReason? autoFreeze = null,
+            bool skipUpdate = false
+        )
         {
-            if (!_playerStates.TryGetValue(playerID, out var state))
+            if (!_playerStates.TryGetValue(playerId, out var state))
             {
-                _monitor.Log($"Found no player with ID={playerID}", LogLevel.Error);
+                _monitor.Log($"Found no player with ID={playerId}", LogLevel.Error);
                 return;
             }
 
@@ -311,18 +344,18 @@ namespace ItsStardewTime.Framework
             }
         }
 
-        internal void AdjustTickInterval(long playerID, int change)
+        internal void AdjustTickInterval(long playerId, int change)
         {
-            if (!_playerStates.TryGetValue(playerID, out var state))
+            if (!_playerStates.TryGetValue(playerId, out var state))
             {
-                _monitor.Log($"Found no player with ID={playerID}", LogLevel.Error);
+                _monitor.Log($"Found no player with ID={playerId}", LogLevel.Error);
                 return;
             }
 
             if (change < 0)
             {
-                int minAllowed = Math.Min(state.TickInterval, -change);
-                state.TickInterval = Math.Max(minAllowed, state.TickInterval + change);
+                int min_allowed = Math.Min(state.TickInterval, -change);
+                state.TickInterval = Math.Max(min_allowed, state.TickInterval + change);
             }
             else
             {
@@ -338,11 +371,11 @@ namespace ItsStardewTime.Framework
             UpdateAllClients();
         }
 
-        internal void UpdatePauseState(long playerID, bool requestingPause)
+        internal void UpdatePauseState(long playerId, bool requestingPause)
         {
-            if (!_playerStates.TryGetValue(playerID, out var state))
+            if (!_playerStates.TryGetValue(playerId, out var state))
             {
-                _monitor.Log($"Found no player with ID={playerID}", LogLevel.Error);
+                _monitor.Log($"Found no player with ID={playerId}", LogLevel.Error);
                 return;
             }
 
@@ -355,11 +388,11 @@ namespace ItsStardewTime.Framework
             UpdateAllClients();
         }
 
-        internal void UpdateEventActivity(long playerID, bool isEventActive)
+        internal void UpdateEventActivity(long playerId, bool isEventActive)
         {
-            if (!_playerStates.TryGetValue(playerID, out var state))
+            if (!_playerStates.TryGetValue(playerId, out var state))
             {
-                _monitor.Log($"Found no player with ID={playerID}", LogLevel.Error);
+                _monitor.Log($"Found no player with ID={playerId}", LogLevel.Error);
                 return;
             }
 
@@ -372,11 +405,11 @@ namespace ItsStardewTime.Framework
             UpdateAllClients();
         }
 
-        internal void UpdateVote(long playerID, bool newVote)
+        internal void UpdateVote(long playerId, bool newVote)
         {
-            if (!_playerStates.TryGetValue(playerID, out var state))
+            if (!_playerStates.TryGetValue(playerId, out var state))
             {
-                _monitor.Log($"Found no player with ID={playerID}", LogLevel.Error);
+                _monitor.Log($"Found no player with ID={playerId}", LogLevel.Error);
                 return;
             }
 
@@ -386,34 +419,70 @@ namespace ItsStardewTime.Framework
                 _recomputationRequired = true;
             }
 
-            NotifyOfVoteUpdate(playerID, newVote);
+            NotifyOfVoteUpdate(playerId, newVote);
             UpdateAllClients();
         }
 
-        private int NotifyOfVoteUpdate(long playerID, bool newVote)
+        private int NotifyOfVoteUpdate(long playerId, bool newVote)
         {
-            int votedYes = _playerStates.Values.Count(s => s.IsVoteForPauseAffirmative);
+            int voted_yes = _playerStates.Values.Count(s => s.IsVoteForPauseAffirmative);
             if (_config.EnableVotePause)
             {
                 if (newVote)
                 {
-                    _helper.Multiplayer.SendMessage(I18n.Message_PlayerVotedToPause(Game1.getFarmer(playerID).Name, votedYes, _playerStates.Count), Messages.VoteUpdateMessage, new[] { _manifest.UniqueID });
+                    _helper.Multiplayer.SendMessage
+                    (
+                        I18n.Message_PlayerVotedToPause
+                        (
+                            Game1.getFarmer(playerId).Name,
+                            voted_yes,
+                            _playerStates.Count
+                        ),
+                        Messages.VoteUpdateMessage,
+                        new[] { _manifest.UniqueID }
+                    );
                     if (_config.DisplayVotePauseMessages)
                     {
-                        Notifier.NotifyInChatBox(I18n.Message_PlayerVotedToPause(Game1.getFarmer(playerID).Name, votedYes, _playerStates.Count));
+                        Notifier.NotifyInChatBox
+                        (
+                            I18n.Message_PlayerVotedToPause
+                            (
+                                Game1.getFarmer(playerId).Name,
+                                voted_yes,
+                                _playerStates.Count
+                            )
+                        );
                     }
                 }
                 else
                 {
-                    _helper.Multiplayer.SendMessage(I18n.Message_PlayerVotedToUnpause(Game1.getFarmer(playerID).Name, votedYes, _playerStates.Count), Messages.VoteUpdateMessage, new[] { _manifest.UniqueID });
+                    _helper.Multiplayer.SendMessage
+                    (
+                        I18n.Message_PlayerVotedToUnpause
+                        (
+                            Game1.getFarmer(playerId).Name,
+                            voted_yes,
+                            _playerStates.Count
+                        ),
+                        Messages.VoteUpdateMessage,
+                        new[] { _manifest.UniqueID }
+                    );
                     if (_config.DisplayVotePauseMessages)
                     {
-                        Notifier.NotifyInChatBox(I18n.Message_PlayerVotedToUnpause(Game1.getFarmer(playerID).Name, votedYes, _playerStates.Count));
+                        Notifier.NotifyInChatBox
+                        (
+                            I18n.Message_PlayerVotedToUnpause
+                            (
+                                Game1.getFarmer(playerId).Name,
+                                voted_yes,
+                                _playerStates.Count
+                            )
+                        );
                     }
                 }
             }
 
-            return votedYes;
+            return voted_yes;
         }
 
         internal void UpdateAllClients()
@@ -423,40 +492,77 @@ namespace ItsStardewTime.Framework
                 return;
             }
 
-            int priorTickInterval = _cachedTickInterval;
-            bool? priorManualFreeze = _cachedManualFreeze;
-            AutoFreezeReason priorAutoFreeze = _cachedAutoFreeze;
-            GetSharedTimeSpeedSettings(out int tickInterval, out bool? manualFreeze, out AutoFreezeReason autoFreeze);
+            int prior_tick_interval = _cachedTickInterval;
+            bool? prior_manual_freeze = _cachedManualFreeze;
+            AutoFreezeReason prior_auto_freeze = _cachedAutoFreeze;
+            GetSharedTimeSpeedSettings
+            (
+                out int tick_interval,
+                out bool? manual_freeze,
+                out AutoFreezeReason auto_freeze
+            );
 
-            if (priorTickInterval != tickInterval || priorManualFreeze != manualFreeze || priorAutoFreeze != autoFreeze)
+            if (prior_tick_interval != tick_interval ||
+                prior_manual_freeze != manual_freeze ||
+                prior_auto_freeze != auto_freeze)
             {
                 if (Context.IsMultiplayer)
                 {
-                    SendSetTimeSpeedCommand(tickInterval, manualFreeze, autoFreeze);
+                    SendSetTimeSpeedCommand
+                    (
+                        tick_interval,
+                        manual_freeze,
+                        auto_freeze
+                    );
                 }
-                TimeMaster.TimeSpeed.UpdateTimeSpeed(
-                    tickInterval: tickInterval,
-                    autoFreeze: autoFreeze,
-                    manualOverride: manualFreeze,
-                    clearPreviousOverrides: manualFreeze == null,
+
+                TimeMaster.TimeSpeed.UpdateTimeSpeed
+                (
+                    tickInterval: tick_interval,
+                    autoFreeze: auto_freeze,
+                    manualOverride: manual_freeze,
+                    clearPreviousOverrides: manual_freeze == null,
                     notifyOfUpdates: _config.TimeFlowChangeNotifications,
-                    notifyOfMultiplayerUpdates: _config.TimeFlowChangeNotificationsMultiplayer);
+                    notifyOfMultiplayerUpdates: _config.TimeFlowChangeNotificationsMultiplayer
+                );
             }
         }
 
-        private void SendSetTimeSpeedCommand(int tickInterval, bool? manualFreeze, AutoFreezeReason autoFreeze, long? playerID = null)
+        private void SendSetTimeSpeedCommand
+        (
+            int tickInterval,
+            bool? manualFreeze,
+            AutoFreezeReason autoFreeze,
+            long? playerId = null
+        )
         {
-            long[]? playerIDs = null;
-            if (playerID != null)
+            long[]? player_i_ds = null;
+            if (playerId != null)
             {
-                playerIDs = new[] { playerID.Value };
+                player_i_ds = new[] { playerId.Value };
             }
 
-            var message = new SetTimeSpeedCommand(tickInterval, manualFreeze, autoFreeze);
-            _helper.Multiplayer.SendMessage(message, Messages.SetTimeSpeed, new string[1] { _manifest.UniqueID }, playerIDs);
+            var message = new SetTimeSpeedCommand
+            (
+                tickInterval,
+                manualFreeze,
+                autoFreeze
+            );
+            _helper.Multiplayer.SendMessage
+            (
+                message,
+                Messages.SetTimeSpeed,
+                new string[1] { _manifest.UniqueID },
+                player_i_ds
+            );
         }
 
-        internal void GetSharedTimeSpeedSettings(out int tickInterval, out bool? manualFreeze, out AutoFreezeReason autoFreeze)
+        internal void GetSharedTimeSpeedSettings
+        (
+            out int tickInterval,
+            out bool? manualFreeze,
+            out AutoFreezeReason autoFreeze
+        )
         {
             if (!_recomputationRequired)
             {
@@ -470,9 +576,11 @@ namespace ItsStardewTime.Framework
             (manualFreeze, autoFreeze) = RecomputeFrozenState();
 
             // clear manual unfreeze if it's no longer needed
-            if (_freezeOverride != null && autoFreeze == AutoFreezeReason.None && (manualFreeze == null || manualFreeze == false))
+            if (_freezeOverride != null &&
+                autoFreeze == AutoFreezeReason.None &&
+                (manualFreeze == null || manualFreeze == false))
             {
-                _monitor.Log($"Clearing _freezeOverride: ({_freezeOverride}). manualFreeze={manualFreeze}", LogLevel.Trace);
+                _monitor.Log($"Clearing _freezeOverride: ({_freezeOverride}). manualFreeze={manualFreeze}");
                 _freezeOverride = null;
             }
 
@@ -507,9 +615,10 @@ namespace ItsStardewTime.Framework
                     }
                     else
                     {
-                        _monitor.LogOnce($"Can't find Host player state", LogLevel.Error);
+                        _monitor.LogOnce("Can't find Host player state", LogLevel.Error);
                         result = TimeHelper.CurrentDefaultTickInterval;
                     }
+
                     break;
 
                 case TimeSpeedMode.Max:
@@ -521,16 +630,20 @@ namespace ItsStardewTime.Framework
                     break;
 
                 default:
-                    _monitor.LogOnce($"Unknown TimeSpeedMode config.json value: {_config.TimeSpeedMode}", LogLevel.Alert);
+                    _monitor.LogOnce
+                    (
+                        $"Unknown TimeSpeedMode config.json value: {_config.TimeSpeedMode}",
+                        LogLevel.Alert
+                    );
                     result = TimeHelper.CurrentDefaultTickInterval;
                     break;
             }
 
             if (_config.RelativeTimeSpeed)
             {
-                double numPlayersPaused = _playerStates.Values.Count(s => s.IsPaused);
-                double numPlayers = _playerStates.Count;
-                result *= numPlayers / Math.Max(1, numPlayers - numPlayersPaused);
+                double num_players_paused = _playerStates.Values.Count(s => s.IsPaused);
+                double num_players = _playerStates.Count;
+                result *= num_players / Math.Max(1, num_players - num_players_paused);
             }
 
             return (int)result;
@@ -538,119 +651,127 @@ namespace ItsStardewTime.Framework
 
         private (bool?, AutoFreezeReason) RecomputeFrozenState()
         {
-            AutoFreezeReason autoFreeze = AutoFreezeReason.None;
-            bool pauseVoteSucceeded = true;
-            bool eventIsActive = false;
-            bool fairPause = PauseMode.Fair == _config.PauseMode;
-            bool anyPause = PauseMode.Any == _config.PauseMode;
-            bool allPause = PauseMode.All == _config.PauseMode;
-            bool halfPause = PauseMode.Half == _config.PauseMode;
-            bool majorityPause = PauseMode.Majority == _config.PauseMode;
-            int pauseRequestedCount = 0;
-            int pauseNotRequestedCount = 0;
+            AutoFreezeReason auto_freeze = AutoFreezeReason.None;
+            bool pause_vote_succeeded = true;
+            bool event_is_active = false;
+            bool fair_pause = PauseMode.Fair == _config.PauseMode;
+            bool any_pause = PauseMode.Any == _config.PauseMode;
+            bool all_pause = PauseMode.All == _config.PauseMode;
+            bool half_pause = PauseMode.Half == _config.PauseMode;
+            bool majority_pause = PauseMode.Majority == _config.PauseMode;
+            int pause_requested_count = 0;
+            int pause_not_requested_count = 0;
             int min = int.MaxValue;
-            PlayerState? minPlayerState = null;
-            foreach (var playerState in _playerStates.Values)
+            PlayerState? min_player_state = null;
+            foreach (var player_state in _playerStates.Values)
             {
-                if (playerState.AutoFreezeReason == AutoFreezeReason.FrozenAtTime)
+                if (player_state.AutoFreezeReason == AutoFreezeReason.FrozenAtTime)
                 {
-                    autoFreeze = AutoFreezeReason.FrozenAtTime;
+                    auto_freeze = AutoFreezeReason.FrozenAtTime;
                 }
 
-                if (autoFreeze == AutoFreezeReason.None && playerState.AutoFreezeReason == AutoFreezeReason.FrozenForLocation)
+                if (
+                    auto_freeze == AutoFreezeReason.None &&
+                    player_state.AutoFreezeReason == AutoFreezeReason.FrozenForLocation
+                )
                 {
-                    autoFreeze = AutoFreezeReason.FrozenForLocation;
+                    auto_freeze = AutoFreezeReason.FrozenForLocation;
                 }
 
-                if (!playerState.IsVoteForPauseAffirmative)
+                if (!player_state.IsVoteForPauseAffirmative)
                 {
-                    pauseVoteSucceeded = false;
+                    pause_vote_succeeded = false;
                 }
 
-                if (playerState.IsEventActive)
+                if (player_state.IsEventActive)
                 {
-                    eventIsActive = true;
+                    event_is_active = true;
                 }
 
-                bool playerRequestedPause = playerState.IsPaused;
-                if (playerRequestedPause)
+                bool player_requested_pause = player_state.IsPaused;
+                if (player_requested_pause)
                 {
-                    pauseRequestedCount += 1;
+                    pause_requested_count += 1;
                 }
                 else
                 {
-                    pauseNotRequestedCount += 1;
+                    pause_not_requested_count += 1;
                 }
 
-                if (fairPause)
+                if (fair_pause)
                 {
-                    min = Math.Min(min, playerState.TotalTicksPaused);
-                    if (min == playerState.TotalTicksPaused)
+                    min = Math.Min(min, player_state.TotalTicksPaused);
+                    if (min == player_state.TotalTicksPaused)
                     {
-                        minPlayerState = playerState;
+                        min_player_state = player_state;
                     }
                 }
             }
 
             if (_freezeOverride != null)
             {
-                return (_freezeOverride, autoFreeze);
+                return (_freezeOverride, auto_freeze);
             }
-            else if (autoFreeze == AutoFreezeReason.FrozenAtTime)
+
+            if (auto_freeze == AutoFreezeReason.FrozenAtTime)
             {
-                return (null, autoFreeze);
+                return (null, auto_freeze);
             }
-            else if (pauseVoteSucceeded && _config.EnableVotePause)
+
+            if (pause_vote_succeeded && _config.EnableVotePause)
             {
-                return (true, autoFreeze);
+                return (true, auto_freeze);
             }
-            else if (eventIsActive && _config.AnyCutscenePauses)
+
+            if (event_is_active && _config.AnyCutscenePauses)
             {
-                return (true, autoFreeze);
+                return (true, auto_freeze);
             }
-            else if (PauseMode.Host == _config.PauseMode)
+
+            if (PauseMode.Host == _config.PauseMode)
             {
-                if (_playerStates.TryGetValue(Game1.MasterPlayer.UniqueMultiplayerID, out var hostState))
+                if (_playerStates.TryGetValue(Game1.MasterPlayer.UniqueMultiplayerID, out var host_state))
                 {
-                    return (hostState.IsPaused, autoFreeze);
-                }
-                else
-                {
-                    _monitor.LogOnce($"Can't find Host player state", LogLevel.Error);
-                    return (null, autoFreeze);
-                }
-            }
-            else if (fairPause)
-            {
-                if (minPlayerState == null)
-                {
-                    _monitor.LogOnce($"Unable to find player with minimum pause time.", LogLevel.Error);
-                    return (null, autoFreeze);
+                    return (host_state.IsPaused, auto_freeze);
                 }
 
-                return (minPlayerState.IsPaused, autoFreeze);
+                _monitor.LogOnce("Can't find Host player state", LogLevel.Error);
+                return (null, auto_freeze);
             }
-            else if (anyPause)
+
+            if (fair_pause)
             {
-                return (pauseRequestedCount > 0, autoFreeze);
+                if (min_player_state == null)
+                {
+                    _monitor.LogOnce("Unable to find player with minimum pause time.", LogLevel.Error);
+                    return (null, auto_freeze);
+                }
+
+                return (min_player_state.IsPaused, auto_freeze);
             }
-            else if (allPause)
+
+            if (any_pause)
             {
-                return (pauseNotRequestedCount == 0, autoFreeze);
+                return (pause_requested_count > 0, auto_freeze);
             }
-            else if (halfPause)
+
+            if (all_pause)
             {
-                return (pauseRequestedCount >= pauseNotRequestedCount, autoFreeze);
+                return (pause_not_requested_count == 0, auto_freeze);
             }
-            else if (majorityPause)
+
+            if (half_pause)
             {
-                return (pauseRequestedCount > pauseNotRequestedCount, autoFreeze);
+                return (pause_requested_count >= pause_not_requested_count, auto_freeze);
             }
-            else
+
+            if (majority_pause)
             {
-                _monitor.LogOnce($"Invalid PauseMode configuration: {_config.PauseMode}", LogLevel.Alert);
-                return (null, autoFreeze);
+                return (pause_requested_count > pause_not_requested_count, auto_freeze);
             }
+
+            _monitor.LogOnce($"Invalid PauseMode configuration: {_config.PauseMode}", LogLevel.Alert);
+            return (null, auto_freeze);
         }
     }
 }

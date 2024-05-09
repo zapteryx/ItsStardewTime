@@ -8,20 +8,30 @@ namespace ItsStardewTime.Framework
 {
     internal class FancyModIntegration
     {
-        internal static bool TryGetModEntry(IModInfo modInfo, IMonitor monitor, [NotNullWhen(returnValue: true)] out object? modEntry)
+        internal static bool TryGetModEntry
+        (
+            IModInfo modInfo,
+            IMonitor monitor,
+            [NotNullWhen(returnValue: true)] out object? modEntry
+        )
         {
             modEntry = null;
-            Type iModMetadataType = AccessTools.TypeByName("StardewModdingAPI.Framework.IModMetadata");
-            if (modInfo.GetType().IsAssignableFrom(iModMetadataType))
+            Type i_mod_metadata_type = AccessTools.TypeByName("StardewModdingAPI.Framework.IModMetadata");
+            if (modInfo.GetType().IsAssignableFrom(i_mod_metadata_type))
             {
-                monitor.Log($"Failed to get ModEntry for {modInfo.Manifest.Name}. Could not find IModMetadata.", LogLevel.Error);
+                monitor.Log
+                (
+                    $"Failed to get ModEntry for {modInfo.Manifest.Name}. Could not find IModMetadata.",
+                    LogLevel.Error
+                );
                 return false;
             }
 
-            if (AccessTools.Property(iModMetadataType, "Mod") is not PropertyInfo modPropertyInfo
-                || modPropertyInfo.GetValue(modInfo) is not object mod)
+            if (AccessTools.Property(i_mod_metadata_type, "Mod") is not PropertyInfo mod_property_info ||
+                mod_property_info.GetValue(modInfo) is not object mod)
             {
-                monitor.Log($"Failed to get ModEntry for {modInfo.Manifest.Name}. Could not find its IMod.", LogLevel.Error);
+                monitor.Log
+                    ($"Failed to get ModEntry for {modInfo.Manifest.Name}. Could not find its IMod.", LogLevel.Error);
                 return false;
             }
 
@@ -29,165 +39,194 @@ namespace ItsStardewTime.Framework
             return true;
         }
 
-        internal static int RemoveModEventHandlers(IModHelper helper, IModInfo modInfo, IMonitor monitor)
+        internal static int RemoveModEventHandlers
+        (
+            IModHelper helper,
+            IModInfo modInfo,
+            IMonitor monitor
+        )
         {
-            int numRemoved = 0;
-            Type modEventsBaseType = AccessTools.TypeByName("StardewModdingAPI.Framework.Events.ModEventsBase");
-            Type managedEventType = AccessTools.TypeByName("StardewModdingAPI.Framework.Events.ManagedEvent`1");
+            int num_removed = 0;
+            Type mod_events_base_type = AccessTools.TypeByName("StardewModdingAPI.Framework.Events.ModEventsBase");
+            Type managed_event_type = AccessTools.TypeByName("StardewModdingAPI.Framework.Events.ManagedEvent`1");
 
-            foreach (PropertyInfo propertyInfo in helper.Events.GetType().GetProperties())
+            foreach (PropertyInfo property_info in helper.Events.GetType().GetProperties())
             {
-                if (propertyInfo.GetValue(helper.Events) is not object modEventsBase || !modEventsBase.GetType().IsAssignableTo(modEventsBaseType))
+                if (property_info.GetValue(helper.Events) is not object mod_events_base ||
+                    !mod_events_base.GetType().IsAssignableTo(mod_events_base_type))
                 {
-                    monitor.Log($"Unable to get ModEventsBase for {propertyInfo.Name}.", LogLevel.Error);
+                    monitor.Log($"Unable to get ModEventsBase for {property_info.Name}.", LogLevel.Error);
                     continue;
                 }
 
-                if (AccessTools.Field(modEventsBase.GetType(), "EventManager") is not FieldInfo eventManagerField
-                    || eventManagerField.GetValue(modEventsBase) is not object eventManager)
+                if (AccessTools.Field(mod_events_base.GetType(), "EventManager") is not FieldInfo event_manager_field ||
+                    event_manager_field.GetValue(mod_events_base) is not object event_manager)
                 {
-                    monitor.Log($"Unable to get EventManager for {propertyInfo.Name}.", LogLevel.Error);
+                    monitor.Log($"Unable to get EventManager for {property_info.Name}.", LogLevel.Error);
                     continue;
                 }
 
-                foreach (FieldInfo managedEventFieldInfo in eventManager.GetType().GetFields())
+                foreach (FieldInfo managed_event_field_info in event_manager.GetType().GetFields())
                 {
-                    if (managedEventFieldInfo.GetValue(eventManager) is not object managedEvent
-                        || !managedEvent.GetType().IsGenericType
-                        || managedEvent.GetType().GetGenericTypeDefinition() != managedEventType)
+                    if (managed_event_field_info.GetValue(event_manager) is not object managed_event ||
+                        !managed_event.GetType().IsGenericType ||
+                        managed_event.GetType().GetGenericTypeDefinition() != managed_event_type)
                     {
-                        monitor.Log($"Unable to get ManagedEvent<> for {managedEventFieldInfo.Name}.", LogLevel.Error);
+                        monitor.Log($"Unable to get ManagedEvent<> for {managed_event_field_info.Name}.", LogLevel.Error);
                         continue;
                     }
 
-                    if (AccessTools.Field(managedEvent.GetType(), "Handlers") is not FieldInfo handlersField
-                        || handlersField.GetValue(managedEvent) is not IList handlers)
+                    if (AccessTools.Field(managed_event.GetType(), "Handlers") is not FieldInfo handlers_field ||
+                        handlers_field.GetValue(managed_event) is not IList handlers)
                     {
-                        monitor.Log($"Unable to get IList handlers for {managedEventFieldInfo.Name}.", LogLevel.Error);
+                        monitor.Log($"Unable to get IList handlers for {managed_event_field_info.Name}.", LogLevel.Error);
                         continue;
                     }
 
-                    ArrayList toBeRemoved = new();
+                    ArrayList to_be_removed = new();
                     foreach (var handler in handlers)
                     {
-                        if (AccessTools.Property(handler.GetType(), "SourceMod") is not PropertyInfo modMetadataProperty
-                            || modMetadataProperty.GetValue(handler) is not IModInfo modMetadata)
+                        if (AccessTools.Property
+                                (handler.GetType(), "SourceMod") is not PropertyInfo mod_metadata_property ||
+                            mod_metadata_property.GetValue(handler) is not IModInfo mod_metadata)
                         {
-                            monitor.Log($"Unable to get IModMetadata associated with handler in {managedEventFieldInfo.Name}.", LogLevel.Error);
+                            monitor.Log
+                            (
+                                $"Unable to get IModMetadata associated with handler in {managed_event_field_info.Name}.",
+                                LogLevel.Error
+                            );
                             continue;
                         }
 
-                        if (modInfo.Manifest.UniqueID != modMetadata.Manifest.UniqueID)
+                        if (modInfo.Manifest.UniqueID != mod_metadata.Manifest.UniqueID)
                         {
                             continue;
                         }
 
-                        if (AccessTools.Property(handler.GetType(), "Handler") is not PropertyInfo handlerMethodProperty
-                            || handlerMethodProperty.GetValue(handler) is not object handlerMethod)
+                        if (AccessTools.Property
+                                (handler.GetType(), "Handler") is not PropertyInfo handler_method_property ||
+                            handler_method_property.GetValue(handler) is not object handler_method)
                         {
-                            monitor.Log($"Unable to get EventHandler<> associated with handler in {managedEventFieldInfo.Name}.", LogLevel.Error);
+                            monitor.Log
+                            (
+                                $"Unable to get EventHandler<> associated with handler in {managed_event_field_info.Name}.",
+                                LogLevel.Error
+                            );
                             continue;
                         }
 
-                        toBeRemoved.Add(handlerMethod);
+                        to_be_removed.Add(handler_method);
                     }
 
-                    if (AccessTools.Method(managedEvent.GetType(), "Remove") is not MethodInfo removeMethod)
+                    if (AccessTools.Method(managed_event.GetType(), "Remove") is not MethodInfo remove_method)
                     {
-                        monitor.Log($"Unable to get Remove method for {managedEventFieldInfo.Name}.", LogLevel.Error);
+                        monitor.Log($"Unable to get Remove method for {managed_event_field_info.Name}.", LogLevel.Error);
                         continue;
                     }
 
-                    foreach (var handler in toBeRemoved)
+                    foreach (var handler in to_be_removed)
                     {
-                        removeMethod.Invoke(managedEvent, new[] { handler });
+                        remove_method.Invoke(managed_event, new[] { handler });
                     }
 
-                    numRemoved += toBeRemoved.Count;
+                    num_removed += to_be_removed.Count;
                 }
             }
 
-            return numRemoved;
+            return num_removed;
         }
 
-        internal static int RemoveModEventHandler(string typeName, string methodName, object modEventsBase, string eventName, IMonitor monitor)
+        internal static int RemoveModEventHandler
+        (
+            string typeName,
+            string methodName,
+            object modEventsBase,
+            string eventName,
+            IMonitor monitor
+        )
         {
-            Type modEventsBaseType = AccessTools.TypeByName("StardewModdingAPI.Framework.Events.ModEventsBase");
-            Type managedEventType = AccessTools.TypeByName("StardewModdingAPI.Framework.Events.ManagedEvent`1");
+            Type mod_events_base_type = AccessTools.TypeByName("StardewModdingAPI.Framework.Events.ModEventsBase");
+            Type managed_event_type = AccessTools.TypeByName("StardewModdingAPI.Framework.Events.ManagedEvent`1");
 
-            if (AccessTools.TypeByName(typeName) is not Type type || AccessTools.Method(type, methodName) is not MethodInfo methodInfo)
+            if (AccessTools.TypeByName(typeName) is not Type type ||
+                AccessTools.Method(type, methodName) is not MethodInfo method_info)
             {
                 monitor.Log($"Failed to lookup type info for method ({typeName}.{methodName}).", LogLevel.Error);
                 return 0;
             }
 
-            if (!modEventsBase.GetType().IsAssignableTo(modEventsBaseType))
+            if (!modEventsBase.GetType().IsAssignableTo(mod_events_base_type))
             {
                 monitor.Log($"Unable to get ModEventsBase for {eventName}.", LogLevel.Error);
                 return 0;
             }
 
-            if (AccessTools.Field(modEventsBase.GetType(), "EventManager") is not FieldInfo eventManagerField
-                || eventManagerField.GetValue(modEventsBase) is not object eventManager)
+            if (AccessTools.Field(modEventsBase.GetType(), "EventManager") is not FieldInfo event_manager_field ||
+                event_manager_field.GetValue(modEventsBase) is not object event_manager)
             {
                 monitor.Log($"Unable to get EventManager for {eventName}.", LogLevel.Error);
                 return 0;
             }
 
-            if (AccessTools.Field(eventManager.GetType(), eventName) is not FieldInfo managedEventFieldInfo)
+            if (AccessTools.Field(event_manager.GetType(), eventName) is not FieldInfo managed_event_field_info)
             {
                 monitor.Log($"Unable to find field for '{eventName}' event.", LogLevel.Error);
                 return 0;
             }
 
-            if (managedEventFieldInfo.GetValue(eventManager) is not object managedEvent
-                || !managedEvent.GetType().IsGenericType
-                || managedEvent.GetType().GetGenericTypeDefinition() != managedEventType)
+            if (managed_event_field_info.GetValue(event_manager) is not object managed_event ||
+                !managed_event.GetType().IsGenericType ||
+                managed_event.GetType().GetGenericTypeDefinition() != managed_event_type)
             {
-                monitor.Log($"Unable to get ManagedEvent<> for {managedEventFieldInfo.Name}.", LogLevel.Error);
+                monitor.Log($"Unable to get ManagedEvent<> for {managed_event_field_info.Name}.", LogLevel.Error);
                 return 0;
             }
 
-            if (AccessTools.Field(managedEvent.GetType(), "Handlers") is not FieldInfo handlersField
-                || handlersField.GetValue(managedEvent) is not IList handlers)
+            if (AccessTools.Field(managed_event.GetType(), "Handlers") is not FieldInfo handlers_field ||
+                handlers_field.GetValue(managed_event) is not IList handlers)
             {
-                monitor.Log($"Unable to get IList handlers for {managedEventFieldInfo.Name}.", LogLevel.Error);
+                monitor.Log($"Unable to get IList handlers for {managed_event_field_info.Name}.", LogLevel.Error);
                 return 0;
             }
 
-            ArrayList toBeRemoved = new();
+            ArrayList to_be_removed = new();
             foreach (var handler in handlers)
             {
-                if (AccessTools.Property(handler.GetType(), "Handler") is not PropertyInfo handlerMethodProperty
-                    || handlerMethodProperty.GetValue(handler) is not Delegate handlerMethod)
+                if (AccessTools.Property(handler.GetType(), "Handler") is not PropertyInfo handler_method_property ||
+                    handler_method_property.GetValue(handler) is not Delegate handler_method)
                 {
-                    monitor.Log($"Unable to get EventHandler<> associated with handler ({handler}) for {eventName}.", LogLevel.Error);
+                    monitor.Log
+                    (
+                        $"Unable to get EventHandler<> associated with handler ({handler}) for {eventName}.",
+                        LogLevel.Error
+                    );
                     continue;
                 }
 
-                if (handlerMethod.Method.Equals(methodInfo))
+                if (handler_method.Method.Equals(method_info))
                 {
-                    toBeRemoved.Add(handlerMethod);
+                    to_be_removed.Add(handler_method);
                 }
             }
 
-            if (AccessTools.Method(managedEvent.GetType(), "Remove") is not MethodInfo removeMethod)
+            if (AccessTools.Method(managed_event.GetType(), "Remove") is not MethodInfo remove_method)
             {
                 monitor.Log($"Unable to get Remove method for {eventName}.", LogLevel.Error);
                 return 0;
             }
 
-            foreach (var handler in toBeRemoved)
+            foreach (var handler in to_be_removed)
             {
-                removeMethod.Invoke(managedEvent, new[] { handler });
+                remove_method.Invoke(managed_event, new[] { handler });
             }
 
-            if (toBeRemoved.Count == 0)
+            if (to_be_removed.Count == 0)
             {
-                monitor.Log($"Failed to find event handler {typeName}.{methodName} in handlers ({handlers}).", LogLevel.Error);
+                monitor.Log
+                    ($"Failed to find event handler {typeName}.{methodName} in handlers ({handlers}).", LogLevel.Error);
             }
 
-            return toBeRemoved.Count;
+            return to_be_removed.Count;
         }
     }
 }
