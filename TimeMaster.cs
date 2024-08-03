@@ -689,7 +689,7 @@ namespace ItsStardewTime
                         Where(mode => !Enum.Parse<PauseMode>(mode).IsDeprecated()).
                         ToArray(),
                     formatAllowedValue: (s) => Helper.Translation.Get
-                        ($"TimeController.Config.multiplayer-host-pause-mode.{s}")
+                        ($"config.multiplayer-host-pause-mode.{s}")
                 );
                 config_menu.AddBoolOption
                 (
@@ -740,7 +740,7 @@ namespace ItsStardewTime
                         Where(mode => !Enum.Parse<TimeSpeedMode>(mode).IsDeprecated()).
                         ToArray(),
                     formatAllowedValue: (s) => Helper.Translation.Get
-                        ($"TimeController.Config.multiplayer-host-time-speed-mode.{s}")
+                        ($"config.multiplayer-host-time-speed-mode.{s}")
                 );
                 config_menu.AddBoolOption
                 (
