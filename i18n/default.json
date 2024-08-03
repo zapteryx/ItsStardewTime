@@ -63,7 +63,7 @@
     "config.additional-location-speed.desc": "This value is the speed of time while in the '{{locationName}}' location. The value is a percentage of the unmodified speed of time.",
     "config.additional-location-speed-delete.name": "Remove {{locationName}}",
     "config.additional-location-speed-delete.desc": "Remove this entry from Additional Locations.",
-    
+
     "config.additional-locations-speed.names.Name": "Additional Locations",
     "config.additional-locations-speed.names.desc": "Here you can specify names of specific locations in which to adjust the speed of time. Location names can be seen in the SMAPI console output when 'Time Flow Change Notifications' is enabled. You can list multiple with commas.",
     "config.additional-locations-speed.page.title": "Configure Additional Locations",
@@ -157,7 +157,9 @@ amount of pause time during the current day.",
     "config.multiplayer-host-lock-monsters.desc": "(host player only) When enabled, whenever time is paused, monsters will stop moving and health for monsters and players will lock.",
     "config.multiplayer-host-enable-vote-pause.name": "Enable Voting to Pause",
     "config.multiplayer-host-enable-vote-pause.desc": "(host player only) When enabled, players can vote to pause time. This is in addition to normal pause functionality.",
-    
+    "config.multiplayer-host-vote-threshold.name": "Voting Threshold",
+    "config.multiplayer-host-vote-threshold.desc": "This value is the threshold for votes required to pause time.",
+
     "config.multiplayer-host-time-speed-mode.name": "Time Speed Mode",
     "config.multiplayer-host-time-speed-mode.desc": "(host player only)
 If set to 'Average' mode by the multiplayer host, time will flow at a speed

@@ -715,6 +715,17 @@ namespace ItsStardewTime
                     getValue: () => TimeController.Config.EnableVotePause,
                     setValue: value => TimeController.Config.EnableVotePause = value
                 );
+                config_menu.AddNumberOption
+                (
+                    mod: ModManifest,
+                    name: I18n.Config_MultiplayerHostVoteThreshold_Name,
+                    tooltip: I18n.Config_MultiplayerHostVoteThreshold_Desc,
+                    getValue: () => (float)TimeController.Config.VoteThreshold,
+                    setValue: value => TimeController.Config.VoteThreshold = value,
+                    formatValue: value => value.ToString("P0"),
+                    min: 0,
+                    max: 1
+                );
                 config_menu.AddTextOption
                 (
                     mod: ModManifest,

@@ -436,7 +436,7 @@ namespace ItsStardewTime.Framework
                         (
                             Game1.getFarmer(playerId).Name,
                             voted_yes,
-                            _playerStates.Count
+                            Math.Ceiling(_config.VoteThreshold * _playerStates.Count)
                         ),
                         Messages.VoteUpdateMessage,
                         new[] { _manifest.UniqueID }
@@ -449,7 +449,7 @@ namespace ItsStardewTime.Framework
                             (
                                 Game1.getFarmer(playerId).Name,
                                 voted_yes,
-                                _playerStates.Count
+                                Math.Ceiling(_config.VoteThreshold * _playerStates.Count)
                             )
                         );
                     }
@@ -462,7 +462,7 @@ namespace ItsStardewTime.Framework
                         (
                             Game1.getFarmer(playerId).Name,
                             voted_yes,
-                            _playerStates.Count
+                            Math.Ceiling(_config.VoteThreshold * _playerStates.Count)
                         ),
                         Messages.VoteUpdateMessage,
                         new[] { _manifest.UniqueID }
@@ -475,7 +475,7 @@ namespace ItsStardewTime.Framework
                             (
                                 Game1.getFarmer(playerId).Name,
                                 voted_yes,
-                                _playerStates.Count
+                                Math.Ceiling(_config.VoteThreshold * _playerStates.Count)
                             )
                         );
                     }
@@ -661,6 +661,8 @@ namespace ItsStardewTime.Framework
             bool majority_pause = PauseMode.Majority == _config.PauseMode;
             int pause_requested_count = 0;
             int pause_not_requested_count = 0;
+            int pause_voted_count = 0;
+            int pause_not_voted_count = 0;
             int min = int.MaxValue;
             PlayerState? min_player_state = null;
             foreach (var player_state in _playerStates.Values)
@@ -678,9 +680,14 @@ namespace ItsStardewTime.Framework
                     auto_freeze = AutoFreezeReason.FrozenForLocation;
                 }
 
-                if (!player_state.IsVoteForPauseAffirmative)
+                bool player_voted_pause = player_state.IsVoteForPauseAffirmative;
+                if (player_voted_pause)
                 {
-                    pause_vote_succeeded = false;
+                    pause_voted_count += 1;
+                }
+                else
+                {
+                    pause_not_voted_count += 1;
                 }
 
                 if (player_state.IsEventActive)
@@ -707,6 +714,8 @@ namespace ItsStardewTime.Framework
                     }
                 }
             }
+
+            pause_vote_succeeded = pause_voted_count >= Math.Ceiling(_config.VoteThreshold * _playerStates.Count);
 
             if (_freezeOverride != null)
             {

@@ -45,6 +45,7 @@ namespace ItsStardewTime
         public bool AnyCutscenePauses = true;
         public bool LockMonsters = true;
         public bool EnableVotePause = true;
+        public double VoteThreshold = 1.0;
         public TimeSpeedMode TimeSpeedMode = TimeSpeedMode.Average;
         public bool RelativeTimeSpeed = true;
 
